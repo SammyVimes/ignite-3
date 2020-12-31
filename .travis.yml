@@ -5,6 +5,6 @@ script:
   - export PATH=${JAVA_HOME}/bin:${PATH}
   - choco install adoptopenjdk11
   - choco install maven
-  - export PATH=/c/ProgramData/chocolatey/lib/maven/bin:${PATH}
-  - echo $PATH && ls -lha /c/ProgramData/chocolatey/lib/maven/
+  - export PATH=/c/ProgramData/chocolatey/lib/maven/apache-maven-3.6.3/bin:${PATH}
+  - echo $PATH && ls -lha /c/ProgramData/chocolatey/lib/maven/apache-maven-3.6.3/
   - mvn clean install
