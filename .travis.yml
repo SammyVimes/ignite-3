@@ -1,0 +1,7 @@
+os: windows
+script:
+  - export JAVA_HOME=${JAVA_HOME:-/c/jdk}
+  - export PATH=${JAVA_HOME}/bin:${PATH}
+  - choco install jdk11 -params 'installdir=c:\\jdk'
+  - choco install maven
+  - mvn clean install
