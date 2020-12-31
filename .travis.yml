@@ -1,8 +1,10 @@
 os: windows
 language: bash
 script:
-  - export JAVA_HOME=${JAVA_HOME:-/c/jdk}
+  - export JAVA_HOME="C:\\Program Files\\AdoptOpenJDK\\jdk-11.0.9.101-hotspot"
   - export PATH=${JAVA_HOME}/bin:${PATH}
-  - choco install adoptopenjdk11 -params 'installdir=c:\\jdk'
+  - choco install adoptopenjdk11
   - choco install maven
-  - maven clean install
+  - export PATH=C:/ProgramData/chocolatey/lib/maven/bin:${PATH}
+  - echo $PATH
+  - mvn clean install
