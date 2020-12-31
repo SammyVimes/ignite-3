@@ -6,5 +6,5 @@ script:
   - choco install adoptopenjdk11
   - choco install maven
   - export PATH=/c/ProgramData/chocolatey/lib/maven/bin:${PATH}
-  - echo $PATH
+  - echo $PATH && ls -lha /c/ProgramData/chocolatey/lib/maven/
   - mvn clean install
