@@ -34,4 +34,6 @@ public interface MessageMapperProvider<M extends NetworkMessage> {
      * @return Message serializer.
      */
     MessageSerializer<M> createSerializer();
+
+    byte fieldsCount();
 }

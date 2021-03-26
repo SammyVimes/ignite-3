@@ -15,24 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.network.message;
+package org.apache.ignite.network.internal;
 
-import org.apache.ignite.network.internal.MessageReader;
-
-/**
- * Message deserializer.
- * @param <M> Message type.
- */
-public interface MessageDeserializer<M extends NetworkMessage> {
+public interface DirectMessageStateItem {
     /**
-     * Read message from reader.
-     * @param reader Message reader.
-     * @return Read message.
-     * @throws MessageMappingException If failed.
+     * Resets state.
      */
-    boolean readMessage(MessageReader reader) throws MessageMappingException;
-
-    Class<M> klass();
-
-    M getMessage();
+    public void reset();
 }

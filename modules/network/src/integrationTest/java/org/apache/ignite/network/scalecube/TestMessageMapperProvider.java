@@ -17,7 +17,7 @@
 
 package org.apache.ignite.network.scalecube;
 
-import java.io.IOException;
+import org.apache.ignite.network.internal.MessageReader;
 import org.apache.ignite.network.message.MessageDeserializer;
 import org.apache.ignite.network.message.MessageMapperProvider;
 import org.apache.ignite.network.message.MessageMappingException;
@@ -29,13 +29,41 @@ import org.apache.ignite.network.message.MessageSerializer;
 public class TestMessageMapperProvider implements MessageMapperProvider<TestMessage> {
     /** {@inheritDoc} */
     @Override public MessageDeserializer<TestMessage> createDeserializer() {
-        return reader -> {
-            try {
-                final String str = (String) reader.stream().readObject();
-                return new TestMessage(str);
+        return new MessageDeserializer<TestMessage>() {
+
+            private TestMessage obj;
+
+            private String msg;
+
+            @Override
+            public boolean readMessage(MessageReader reader) throws MessageMappingException {
+                if (!reader.beforeMessageRead())
+                    return false;
+
+                switch (reader.state()) {
+                    case 0:
+                        msg = reader.readString("msg");
+
+                        if (!reader.isLastRead())
+                            return false;
+
+                        reader.incrementState();
+
+                }
+
+                obj = new TestMessage(msg);
+
+                return reader.afterMessageRead(TestMessage.class);
             }
-            catch (IOException | ClassNotFoundException e) {
-                throw new MessageMappingException("Failed to deserialize", e);
+
+            @Override
+            public Class<TestMessage> klass() {
+                return TestMessage.class;
+            }
+
+            @Override
+            public TestMessage getMessage() {
+                return obj;
             }
         };
     }
@@ -43,12 +71,27 @@ public class TestMessageMapperProvider implements MessageMapperProvider<TestMess
     /** {@inheritDoc} */
     @Override public MessageSerializer<TestMessage> createSerializer() {
         return (message, writer) -> {
-            try {
-                writer.stream().writeObject(message.msg());
+            if (!writer.isHeaderWritten()) {
+                if (!writer.writeHeader(message.type(), fieldsCount()))
+                    return false;
+
+                writer.onHeaderWritten();
             }
-            catch (IOException e) {
-                throw new MessageMappingException("Failed to serialize", e);
+
+            switch (writer.state()) {
+                case 0:
+                    if (!writer.writeString("msg", message.msg()))
+                        return false;
+
+                    writer.incrementState();
+
             }
+
+            return true;
         };
+    }
+
+    @Override public byte fieldsCount() {
+        return 1;
     }
 }

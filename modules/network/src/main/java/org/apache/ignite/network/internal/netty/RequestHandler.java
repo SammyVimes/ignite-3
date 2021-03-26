@@ -15,24 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.network.message;
+package org.apache.ignite.network.internal.netty;
 
-import org.apache.ignite.network.internal.MessageReader;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import java.util.function.Consumer;
+import org.apache.ignite.network.message.NetworkMessage;
 
-/**
- * Message deserializer.
- * @param <M> Message type.
- */
-public interface MessageDeserializer<M extends NetworkMessage> {
-    /**
-     * Read message from reader.
-     * @param reader Message reader.
-     * @return Read message.
-     * @throws MessageMappingException If failed.
-     */
-    boolean readMessage(MessageReader reader) throws MessageMappingException;
+public class RequestHandler extends ChannelInboundHandlerAdapter {
 
-    Class<M> klass();
+    private final Consumer<NetworkMessage> requestListener;
 
-    M getMessage();
+    public RequestHandler(Consumer<NetworkMessage> listener) {
+        requestListener = listener;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        NetworkMessage message = (NetworkMessage) msg;
+        requestListener.accept(message);
+    }
 }

@@ -22,6 +22,9 @@ import org.apache.ignite.network.NetworkMember;
  * Message for exchange information in cluster.
  */
 public abstract class NetworkMessage {
+    /** Direct type size in bytes. */
+    public static final int DIRECT_TYPE_SIZE = 2;
+
     /** Network member who sent this message. */
     private NetworkMember sender;
 

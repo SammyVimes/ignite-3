@@ -18,7 +18,14 @@
 package org.apache.ignite.network.scalecube;
 
 import java.io.ObjectInputStream;
+import java.nio.ByteBuffer;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.network.internal.MessageCollectionItemType;
 import org.apache.ignite.network.internal.MessageReader;
+import org.apache.ignite.network.message.NetworkMessage;
 
 /** */
 @Deprecated
@@ -31,8 +38,173 @@ public class ScaleCubeMessageReader implements MessageReader {
         this.stream = stream;
     }
 
-    /** {@inheritDoc} */
-    @Override public ObjectInputStream stream() {
-        return this.stream;
+    @Override
+    public void setBuffer(ByteBuffer buf) {
+
+    }
+
+    @Override
+    public void setCurrentReadClass(Class<? extends NetworkMessage> msgCls) {
+
+    }
+
+    @Override
+    public boolean beforeMessageRead() {
+        return false;
+    }
+
+    @Override
+    public boolean afterMessageRead(Class<? extends NetworkMessage> msgCls) {
+        return false;
+    }
+
+    @Override
+    public byte readByte(String name) {
+        return 0;
+    }
+
+    @Override
+    public short readShort(String name) {
+        return 0;
+    }
+
+    @Override
+    public int readInt(String name) {
+        return 0;
+    }
+
+    @Override
+    public int readInt(String name, int dflt) {
+        return 0;
+    }
+
+    @Override
+    public long readLong(String name) {
+        return 0;
+    }
+
+    @Override
+    public float readFloat(String name) {
+        return 0;
+    }
+
+    @Override
+    public double readDouble(String name) {
+        return 0;
+    }
+
+    @Override
+    public char readChar(String name) {
+        return 0;
+    }
+
+    @Override
+    public boolean readBoolean(String name) {
+        return false;
+    }
+
+    @Override
+    public byte[] readByteArray(String name) {
+        return new byte[0];
+    }
+
+    @Override
+    public short[] readShortArray(String name) {
+        return new short[0];
+    }
+
+    @Override
+    public int[] readIntArray(String name) {
+        return new int[0];
+    }
+
+    @Override
+    public long[] readLongArray(String name) {
+        return new long[0];
+    }
+
+    @Override
+    public float[] readFloatArray(String name) {
+        return new float[0];
+    }
+
+    @Override
+    public double[] readDoubleArray(String name) {
+        return new double[0];
+    }
+
+    @Override
+    public char[] readCharArray(String name) {
+        return new char[0];
+    }
+
+    @Override
+    public boolean[] readBooleanArray(String name) {
+        return new boolean[0];
+    }
+
+    @Override
+    public String readString(String name) {
+        return null;
+    }
+
+    @Override
+    public BitSet readBitSet(String name) {
+        return null;
+    }
+
+    @Override
+    public UUID readUuid(String name) {
+        return null;
+    }
+
+    @Override
+    public <T extends NetworkMessage> T readMessage(String name) {
+        return null;
+    }
+
+    @Override
+    public <T> T[] readObjectArray(String name, MessageCollectionItemType itemType, Class<T> itemCls) {
+        return null;
+    }
+
+    @Override
+    public <C extends Collection<?>> C readCollection(String name, MessageCollectionItemType itemType) {
+        return null;
+    }
+
+    @Override
+    public <M extends Map<?, ?>> M readMap(String name, MessageCollectionItemType keyType, MessageCollectionItemType valType, boolean linked) {
+        return null;
+    }
+
+    @Override
+    public boolean isLastRead() {
+        return false;
+    }
+
+    @Override
+    public int state() {
+        return 0;
+    }
+
+    @Override
+    public void incrementState() {
+
+    }
+
+    @Override
+    public void beforeInnerMessageRead() {
+
+    }
+
+    @Override
+    public void afterInnerMessageRead(boolean finished) {
+
+    }
+
+    @Override
+    public void reset() {
+
     }
 }

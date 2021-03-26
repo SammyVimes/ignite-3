@@ -15,30 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.network.scalecube;
+package org.apache.ignite.network.internal;
 
-import java.io.IOException;
+import java.util.List;
 import org.apache.ignite.network.message.MessageDeserializer;
 import org.apache.ignite.network.message.MessageMapperProvider;
-import org.apache.ignite.network.message.MessageMappingException;
 import org.apache.ignite.network.message.MessageSerializer;
+import org.apache.ignite.network.message.NetworkMessage;
 
-/**
- * Mapper for {@link TestRequest}.
- */
-public class TestRequestMapperProvider implements MessageMapperProvider<TestRequest> {
-    /** {@inheritDoc} */
-    @Override public MessageDeserializer<TestRequest> createDeserializer() {
-        return null;
+public class SerializerProvider {
+
+    private final List<MessageMapperProvider<NetworkMessage>> messageMappers;
+
+    public SerializerProvider(List<MessageMapperProvider<NetworkMessage>> mappers) {
+        messageMappers = mappers;
     }
 
-    /** {@inheritDoc} */
-    @Override public MessageSerializer<TestRequest> createSerializer() {
-        return null;
+    public MessageDeserializer<NetworkMessage> createDeserializer(short directType) {
+        return messageMappers.get(directType).createDeserializer();
     }
 
-    @Override
-    public byte fieldsCount() {
-        return 0;
+    public MessageSerializer<NetworkMessage> createSerializer(short directType) {
+        return messageMappers.get(directType).createSerializer();
     }
 }

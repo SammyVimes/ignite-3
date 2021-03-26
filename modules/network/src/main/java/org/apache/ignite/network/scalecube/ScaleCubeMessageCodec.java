@@ -86,7 +86,9 @@ class ScaleCubeMessageCodec implements MessageCodec {
 
             MessageDeserializer deserializer = mapperProvider.createDeserializer();
 
-            NetworkMessage message = deserializer.readMessage(new ScaleCubeMessageReader(ois));
+//            NetworkMessage message = deserializer.readMessage(new ScaleCubeMessageReader(ois));
+
+            NetworkMessage message = null;
 
             builder.data(message);
         }

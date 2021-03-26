@@ -18,6 +18,7 @@
 package org.apache.ignite.network.scalecube;
 
 import java.io.IOException;
+import org.apache.ignite.network.internal.MessageReader;
 import org.apache.ignite.network.message.MessageDeserializer;
 import org.apache.ignite.network.message.MessageMapperProvider;
 import org.apache.ignite.network.message.MessageMappingException;
@@ -29,13 +30,20 @@ import org.apache.ignite.network.message.MessageSerializer;
 public class TestResponseMapperProvider implements MessageMapperProvider<TestResponse> {
     /** {@inheritDoc} */
     @Override public MessageDeserializer<TestResponse> createDeserializer() {
-        return reader -> {
-            try {
-                final int number = reader.stream().readInt();
-                return new TestResponse(number);
+        return new MessageDeserializer<TestResponse>() {
+            @Override
+            public boolean readMessage(MessageReader reader) throws MessageMappingException {
+                return false;
             }
-            catch (IOException e) {
-                throw new MessageMappingException("Failed to deserialize", e);
+
+            @Override
+            public Class<TestResponse> klass() {
+                return null;
+            }
+
+            @Override
+            public TestResponse getMessage() {
+                return null;
             }
         };
     }
@@ -43,12 +51,12 @@ public class TestResponseMapperProvider implements MessageMapperProvider<TestRes
     /** {@inheritDoc} */
     @Override public MessageSerializer<TestResponse> createSerializer() {
         return (message, writer) -> {
-            try {
-                writer.stream().writeInt(message.responseNumber());
-            }
-            catch (IOException e) {
-                throw new MessageMappingException("Failed to serialize", e);
-            }
+            return false;
         };
+    }
+
+    @Override
+    public byte fieldsCount() {
+        return 0;
     }
 }
