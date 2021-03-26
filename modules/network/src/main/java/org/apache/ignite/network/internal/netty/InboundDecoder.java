@@ -30,14 +30,14 @@ import org.apache.ignite.network.internal.SerializerProvider;
 import org.apache.ignite.network.message.MessageDeserializer;
 import org.apache.ignite.network.message.NetworkMessage;
 
-public class Inbound extends ByteToMessageDecoder {
+public class InboundDecoder extends ByteToMessageDecoder {
 
     private static final AttributeKey<MessageReader> READER_KEY = AttributeKey.valueOf("READER");
     private static final AttributeKey<MessageDeserializer<NetworkMessage>> DESERIALIZER_KEY = AttributeKey.valueOf("DESERIALIZER");
 
     private final SerializerProvider serializerProvider;
 
-    public Inbound(SerializerProvider provider) {
+    public InboundDecoder(SerializerProvider provider) {
         serializerProvider = provider;
     }
 
@@ -73,6 +73,8 @@ public class Inbound extends ByteToMessageDecoder {
                     finished = msg.readMessage(reader);
                 }
 
+                in.readerIndex(buffer.position());
+
                 if (finished) {
                     reader.reset();
                     messageAttr.set(null);
@@ -84,11 +86,9 @@ public class Inbound extends ByteToMessageDecoder {
                 }
             }
             catch (Throwable e) {
-//            U.error(log, "Failed to read message [msg=" + msg +
-//                    ", buf=" + buf +
-//                    ", reader=" + reader +
-//                    ", ses=" + ses + "]",
-//                e);
+                System.err.println("Failed to read message [msg=" + msg +
+                    ", buf=" + buffer +
+                    ", reader=" + reader + "]: " + e.getMessage());
 
                 throw e;
             }

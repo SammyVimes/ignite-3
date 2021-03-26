@@ -55,11 +55,12 @@ public class NettyServer {
                     /** {@inheritDoc} */
                     @Override public void initChannel(SocketChannel ch)
                         throws Exception {
-                        ch.pipeline().addLast(new Inbound(serializerProvider),
+                        ch.pipeline().addLast(new InboundDecoder(serializerProvider),
                             new RequestHandler(messageListener),
                             new ChunkedWriteHandler());
                     }
-                }).option(ChannelOption.SO_BACKLOG, 128)
+                })
+                .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 
             ChannelFuture f = b.bind(port).sync();

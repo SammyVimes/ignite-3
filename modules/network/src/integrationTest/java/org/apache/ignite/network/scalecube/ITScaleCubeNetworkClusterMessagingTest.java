@@ -88,7 +88,7 @@ class ITScaleCubeNetworkClusterMessagingTest {
 
         waitForCluster(alice);
 
-        TestMessage sentMessage = new TestMessage("Message from Alice");
+        TestMessage sentMessage = new TestMessage("Message from Alice", null);
 
         //When: Send one message to all members in cluster.
         for (NetworkMember member : alice.allMembers()) {

@@ -17,8 +17,9 @@
 
 package org.apache.ignite.network.scalecube;
 
-import io.netty.channel.Channel;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import org.apache.ignite.network.internal.SerializerProvider;
@@ -54,14 +55,16 @@ public class NettyTestRunner {
 
         StringBuilder message = new StringBuilder("");
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 950; i++) {
             message.append("f");
         }
 
-        client.send(new TestMessage(message.toString()));
-        client.send(new TestMessage(message.toString()));
-        client.send(new TestMessage(message.toString()));
-        client.send(new TestMessage(message.toString()));
-        client.send(new TestMessage(message.toString()));
+        Map<Integer, String> someMap = new HashMap<>();
+
+        for (int i = 0; i < 26; i++) {
+            someMap.put(i, "" + (char) ('a' + i));
+        }
+
+        client.send(new TestMessage(message.toString(), someMap));
     }
 }

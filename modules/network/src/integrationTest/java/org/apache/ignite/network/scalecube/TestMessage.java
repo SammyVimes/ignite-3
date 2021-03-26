@@ -19,6 +19,7 @@
 package org.apache.ignite.network.scalecube;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.ignite.network.message.AckResponse;
 import org.apache.ignite.network.message.Request;
@@ -31,13 +32,20 @@ class TestMessage extends Request<AckResponse> implements Serializable {
     /** */
     private final String msg;
 
+    private final Map<Integer, String> map;
+
     /** */
-    TestMessage(String msg) {
+    TestMessage(String msg, Map<Integer, String> map) {
         this.msg = msg;
+        this.map = map;
     }
 
     public String msg() {
         return msg;
+    }
+
+    public Map<Integer, String> getMap() {
+        return map;
     }
 
     /** {@inheritDoc} */
@@ -55,10 +63,11 @@ class TestMessage extends Request<AckResponse> implements Serializable {
         return Objects.hash(msg);
     }
 
-    /** {@inheritDoc} */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "TestMessage{" +
             "msg='" + msg + '\'' +
+            ", map=" + map +
             '}';
     }
 

@@ -17,6 +17,8 @@
 
 package org.apache.ignite.network.scalecube;
 
+import java.util.Map;
+import org.apache.ignite.network.internal.MessageCollectionItemType;
 import org.apache.ignite.network.internal.MessageReader;
 import org.apache.ignite.network.message.MessageDeserializer;
 import org.apache.ignite.network.message.MessageMapperProvider;
@@ -34,6 +36,7 @@ public class TestMessageMapperProvider implements MessageMapperProvider<TestMess
             private TestMessage obj;
 
             private String msg;
+            private Map<Integer, String> map;
 
             @Override
             public boolean readMessage(MessageReader reader) throws MessageMappingException {
@@ -42,6 +45,14 @@ public class TestMessageMapperProvider implements MessageMapperProvider<TestMess
 
                 switch (reader.state()) {
                     case 0:
+                        map = reader.readMap("map", MessageCollectionItemType.INT, MessageCollectionItemType.STRING, false);
+
+                        if (!reader.isLastRead())
+                            return false;
+
+                        reader.incrementState();
+
+                    case 1:
                         msg = reader.readString("msg");
 
                         if (!reader.isLastRead())
@@ -51,7 +62,7 @@ public class TestMessageMapperProvider implements MessageMapperProvider<TestMess
 
                 }
 
-                obj = new TestMessage(msg);
+                obj = new TestMessage(msg, map);
 
                 return reader.afterMessageRead(TestMessage.class);
             }
@@ -80,6 +91,12 @@ public class TestMessageMapperProvider implements MessageMapperProvider<TestMess
 
             switch (writer.state()) {
                 case 0:
+                    if (!writer.writeMap("map", message.getMap(), MessageCollectionItemType.INT, MessageCollectionItemType.STRING))
+                        return false;
+
+                    writer.incrementState();
+
+                case 1:
                     if (!writer.writeString("msg", message.msg()))
                         return false;
 
