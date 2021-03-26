@@ -52,44 +52,46 @@ public class Inbound extends ByteToMessageDecoder {
             readerAttr.set(reader = new DirectMessageReader(serializerProvider, (byte) 1));
 
         Attribute<MessageDeserializer<NetworkMessage>> messageAttr = ctx.channel().attr(DESERIALIZER_KEY);
-        MessageDeserializer<NetworkMessage> msg = messageAttr.get();
 
-        try {
-            if (msg == null && buffer.remaining() >= NetworkMessage.DIRECT_TYPE_SIZE) {
-                byte b0 = buffer.get();
-                byte b1 = buffer.get();
+        while (buffer.hasRemaining()) {
+            MessageDeserializer<NetworkMessage> msg = messageAttr.get();
 
-                msg = serializerProvider.createDeserializer(makeMessageType(b0, b1));
-            }
+            try {
+                if (msg == null && buffer.remaining() >= NetworkMessage.DIRECT_TYPE_SIZE) {
+                    byte b0 = buffer.get();
+                    byte b1 = buffer.get();
 
-            boolean finished = false;
+                    msg = serializerProvider.createDeserializer(makeMessageType(b0, b1));
+                }
 
-            if (msg != null && buffer.hasRemaining()) {
-                if (reader != null)
+                boolean finished = false;
+
+                if (msg != null && buffer.hasRemaining()) {
                     reader.setCurrentReadClass(msg.klass());
+                    reader.setBuffer(buffer);
 
-                reader.setBuffer(buffer);
-                finished = msg.readMessage(reader);
-            }
+                    finished = msg.readMessage(reader);
+                }
 
-            if (finished) {
-                if (reader != null)
+                if (finished) {
                     reader.reset();
+                    messageAttr.set(null);
 
-                out.add(msg.getMessage());
+                    out.add(msg.getMessage());
+                }
+                else {
+                    messageAttr.set(msg);
+                }
             }
-            else {
-                messageAttr.set(msg);
-            }
-        }
-        catch (Throwable e) {
+            catch (Throwable e) {
 //            U.error(log, "Failed to read message [msg=" + msg +
 //                    ", buf=" + buf +
 //                    ", reader=" + reader +
 //                    ", ses=" + ses + "]",
 //                e);
 
-            throw e;
+                throw e;
+            }
         }
     }
 

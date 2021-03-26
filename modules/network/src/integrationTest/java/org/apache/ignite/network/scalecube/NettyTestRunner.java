@@ -59,5 +59,9 @@ public class NettyTestRunner {
         }
 
         client.send(new TestMessage(message.toString()));
+        client.send(new TestMessage(message.toString()));
+        client.send(new TestMessage(message.toString()));
+        client.send(new TestMessage(message.toString()));
+        client.send(new TestMessage(message.toString()));
     }
 }
