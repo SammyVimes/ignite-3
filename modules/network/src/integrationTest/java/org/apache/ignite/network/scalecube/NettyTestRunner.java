@@ -45,13 +45,11 @@ public class NettyTestRunner {
 
         final SerializerProvider provider = new SerializerProvider(Arrays.asList(messageMapperProviders));
 
-        new Thread(() -> {
-            new NettyServer(port, provider, listener).run();
-        }).start();
-        final NettyClient client = new NettyClient(port, provider, listener);
-        new Thread(() -> {
-            client.run();
-        }).start();
+        final NettyServer.NettyServerBuilder builder = new NettyServer.NettyServerBuilder(port, provider);
+        builder.addListener(listener);
+        final NettyServer server = builder.start().get();
+
+        final NettyClient client = NettyClient.start(port, provider, listener).get();
 
         StringBuilder message = new StringBuilder("");
 

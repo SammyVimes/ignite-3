@@ -19,14 +19,20 @@ package org.apache.ignite.network.scalecube;
 
 import io.scalecube.cluster.Cluster;
 import io.scalecube.cluster.ClusterImpl;
+import io.scalecube.cluster.transport.api.Transport;
+import io.scalecube.cluster.transport.api.TransportConfig;
+import io.scalecube.cluster.transport.api.TransportFactory;
 import io.scalecube.net.Address;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.apache.ignite.network.MessageHandlerHolder;
 import org.apache.ignite.network.NetworkCluster;
 import org.apache.ignite.network.NetworkClusterContext;
 import org.apache.ignite.network.NetworkClusterFactory;
 import org.apache.ignite.network.NetworkConfigurationException;
+import org.apache.ignite.network.internal.SerializerProvider;
+import org.apache.ignite.network.internal.netty.NettyServer;
 
 /**
  * Factory for ScaleCubeNetworkCluster.
@@ -82,6 +88,15 @@ public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
     @Override public NetworkCluster startCluster(NetworkClusterContext clusterContext) {
         MessageHandlerHolder handlerHolder = clusterContext.messageHandlerHolder();
 
+        SerializerProvider provider = new SerializerProvider(clusterContext.messageMapperProviders());
+        var builder = new NettyServer.NettyServerBuilder(localPort, provider);
+        final NettyServer server;
+        try {
+            server = builder.start().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
         Cluster cluster = new ClusterImpl()
             .handler(cl -> {
                 return new ScaleCubeMessageHandler(cl, memberResolver, handlerHolder);
@@ -89,8 +104,11 @@ public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
             .config(opts -> opts
                 .memberAlias(localMemberName)
                 .transport(trans -> {
-                    return trans.port(localPort)
-                        .messageCodec(new ScaleCubeMessageCodec(clusterContext.messageMapperProviders()));
+                    return trans.transportFactory(new TransportFactory() {
+                        @Override public Transport createTransport(TransportConfig config) {
+                            return new ScaleCubeDirectMarshallerTransport(server, provider);
+                        }
+                    });
                 })
             )
             .membership(opts -> {

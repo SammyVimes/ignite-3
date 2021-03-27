@@ -19,14 +19,16 @@ package org.apache.ignite.network;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import org.apache.ignite.network.message.MessageMapperProvider;
+import org.apache.ignite.network.message.NetworkMessage;
 
 /**
  * Entry point for network module.
  */
 public class Network {
     /** Message mapper providers, messageMapperProviders[message type] -> message mapper provider for message with message type. */
-    private final MessageMapperProvider<?>[] messageMapperProviders = new MessageMapperProvider<?>[Short.MAX_VALUE << 1];
+    private final MessageMapperProvider[] messageMapperProviders = new MessageMapperProvider[Short.MAX_VALUE << 1];
 
     /** Message handlers. */
     private final MessageHandlerHolder messageHandlerHolder = new MessageHandlerHolder();
@@ -59,8 +61,8 @@ public class Network {
      * @return Network cluster.
      */
     public NetworkCluster start() {
-        //noinspection Java9CollectionFactory
-        NetworkClusterContext context = new NetworkClusterContext(messageHandlerHolder, Collections.unmodifiableList(Arrays.asList(messageMapperProviders)));
+        final List<MessageMapperProvider<NetworkMessage>> list = Arrays.asList(messageMapperProviders);
+        NetworkClusterContext context = new NetworkClusterContext(messageHandlerHolder, Collections.unmodifiableList(list));
         return clusterFactory.startCluster(context);
     }
 }

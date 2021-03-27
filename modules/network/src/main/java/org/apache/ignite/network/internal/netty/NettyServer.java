@@ -23,55 +23,99 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import org.apache.ignite.network.internal.SerializerProvider;
 import org.apache.ignite.network.message.NetworkMessage;
 
 public class NettyServer {
 
-    private final int port;
-
     private final SerializerProvider serializerProvider;
 
-    private final Consumer<NetworkMessage> messageListener;
+    private final List<Consumer<NetworkMessage>> messageListener = Collections.synchronizedList(new ArrayList<>());
 
-    public NettyServer(int port, SerializerProvider provider, Consumer<NetworkMessage> listener) {
-        this.port = port;
+    private ChannelFuture f;
+
+    public NettyServer(SerializerProvider provider) {
         serializerProvider = provider;
-        messageListener = listener;
     }
 
-    public void run() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try {
-            ServerBootstrap b = new ServerBootstrap();
+    private void setF(ChannelFuture f) {
+        this.f = f;
+    }
+
+    private void onMesage(NetworkMessage message) {
+        messageListener.forEach(consumer -> consumer.accept(message));
+    }
+
+    public void addListener(Consumer<NetworkMessage> listener) {
+        messageListener.add(listener);
+    }
+
+    public InetSocketAddress address() {
+        return ((ServerSocketChannel) f.channel()).localAddress();
+    }
+
+
+    public static class NettyServerBuilder {
+
+        private final ServerBootstrap b = new ServerBootstrap();
+        private final int port;
+        private final NettyServer server;
+        private final NioEventLoopGroup bossGroup = new NioEventLoopGroup();
+        private final NioEventLoopGroup workerGroup = new NioEventLoopGroup();
+
+        public NettyServerBuilder(int port, SerializerProvider provider) {
+            this.port = port;
+            this.server = new NettyServer(provider);
             b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     /** {@inheritDoc} */
                     @Override public void initChannel(SocketChannel ch)
                         throws Exception {
-                        ch.pipeline().addLast(new InboundDecoder(serializerProvider),
-                            new RequestHandler(messageListener),
+                        ch.pipeline().addLast(new InboundDecoder(provider),
+                            new RequestHandler(server::onMesage),
                             new ChunkedWriteHandler());
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
+        }
 
-            ChannelFuture f = b.bind(port).sync();
-            f.channel().closeFuture().sync();
+        public void addListener(Consumer<NetworkMessage> listener) {
+            server.messageListener.add(listener);
         }
-        catch (InterruptedException ignored) {
-        }
-        finally {
-            workerGroup.shutdownGracefully();
-            bossGroup.shutdownGracefully();
+
+        public CompletableFuture<NettyServer> start() {
+            CompletableFuture<NettyServer> serverStartFuture = new CompletableFuture<>();
+
+            new Thread(() -> {
+            try {
+                ChannelFuture f = b.bind(port).sync();
+
+                server.setF(f);
+
+                serverStartFuture.complete(server);
+
+                f.channel().closeFuture().sync();
+            }
+            catch (InterruptedException ignored) {
+            }
+            finally {
+                workerGroup.shutdownGracefully();
+                bossGroup.shutdownGracefully();
+            }
+        }).start();
+            return serverStartFuture;
         }
     }
-
 }

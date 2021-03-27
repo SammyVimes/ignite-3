@@ -42,54 +42,55 @@ import org.apache.ignite.network.message.NetworkMessage;
 
 public class NettyClient {
 
-    private final int port;
-
     private final SerializerProvider serializerProvider;
 
     private final Consumer<NetworkMessage> messageListener;
 
-    private final CompletableFuture<Channel> channelFuture = new CompletableFuture<>();
+    private final ChannelFuture f;
 
-    public NettyClient(int port, SerializerProvider provider, Consumer<NetworkMessage> listener) {
-        this.port = port;
+    public NettyClient(ChannelFuture f, SerializerProvider provider, Consumer<NetworkMessage> listener) {
+        this.f = f;
         this.serializerProvider = provider;
         this.messageListener = listener;
     }
 
-    public void run() {
+    public static CompletableFuture<NettyClient> start(int port, SerializerProvider provider, Consumer<NetworkMessage> listener) {
         String host = "localhost";
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-        try {
-            Bootstrap b = new Bootstrap();
-            b.group(workerGroup);
-            b.channel(NioSocketChannel.class);
-            b.option(ChannelOption.SO_KEEPALIVE, true);
-            b.handler(new ChannelInitializer<SocketChannel>() {
-                /** {@inheritDoc} */
-                @Override public void initChannel(SocketChannel ch)
-                    throws Exception {
-                    ch.pipeline().addLast(new InboundDecoder(serializerProvider),
-                        new RequestHandler(messageListener),
-                        new ChunkedWriteHandler());
-                }
-            });
+        CompletableFuture<NettyClient> clientFuture = new CompletableFuture<>();
 
-            ChannelFuture f = b.connect(host, port).sync();
+        new Thread(() -> {
+            try {
+                Bootstrap b = new Bootstrap();
+                b.group(workerGroup);
+                b.channel(NioSocketChannel.class);
+                b.option(ChannelOption.SO_KEEPALIVE, true);
+                b.handler(new ChannelInitializer<SocketChannel>() {
+                    /** {@inheritDoc} */
+                    @Override public void initChannel(SocketChannel ch)
+                        throws Exception {
+                        ch.pipeline().addLast(new InboundDecoder(provider),
+                            new RequestHandler(listener),
+                            new ChunkedWriteHandler());
+                    }
+                });
 
-            channelFuture.complete(f.channel());
+                ChannelFuture f = b.connect(host, port).sync();
 
-            f.channel().closeFuture().sync();
-        }
-        catch (InterruptedException ignored) {
-        }
-        finally {
-            workerGroup.shutdownGracefully();
-        }
-    }
+                clientFuture.complete(new NettyClient(f, provider, listener));
 
-    public CompletableFuture<Channel> channel() {
-        return channelFuture;
+                f.channel().closeFuture().sync();
+            }
+            catch (Exception e) {
+                clientFuture.completeExceptionally(e);
+            }
+            finally {
+                workerGroup.shutdownGracefully();
+            }
+        }).start();
+
+        return clientFuture;
     }
 
     public void send(NetworkMessage msg) {
@@ -137,10 +138,6 @@ public class NettyClient {
                 return 0;
             }
         };
-        try {
-            channel().get().writeAndFlush(input);
-        }
-        catch (InterruptedException | ExecutionException ignored) {
-        }
+        f.channel().writeAndFlush(input);
     }
 }

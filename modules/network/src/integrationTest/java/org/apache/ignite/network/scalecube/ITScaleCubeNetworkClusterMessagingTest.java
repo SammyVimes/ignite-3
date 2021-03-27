@@ -30,6 +30,8 @@ import org.apache.ignite.network.NetworkHandlersProvider;
 import org.apache.ignite.network.NetworkMember;
 import org.apache.ignite.network.message.NetworkMessage;
 import org.apache.ignite.network.NetworkMessageHandler;
+import org.apache.ignite.network.scalecube.message.ScaleCubeMessage;
+import org.apache.ignite.network.scalecube.message.ScaleCubeMessageMapperProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -121,6 +123,7 @@ class ITScaleCubeNetworkClusterMessagingTest {
         network.registerMessageMapper(TestMessage.TYPE, new TestMessageMapperProvider());
         network.registerMessageMapper(TestRequest.TYPE, new TestRequestMapperProvider());
         network.registerMessageMapper(TestResponse.TYPE, new TestResponseMapperProvider());
+        network.registerMessageMapper(ScaleCubeMessage.TYPE, new ScaleCubeMessageMapperProvider());
 
         NetworkCluster member = network.start();
 

@@ -34,7 +34,6 @@ import org.apache.ignite.network.message.Request;
 import org.apache.ignite.network.message.Response;
 
 import static java.time.Duration.ofMillis;
-import static org.apache.ignite.network.scalecube.ScaleCubeMessageCodec.HEADER_MESSAGE_TYPE;
 
 /**
  * Implementation of {@link NetworkCluster} based on ScaleCube.
@@ -121,7 +120,6 @@ public class ScaleCubeNetworkCluster implements NetworkCluster {
     private Message fromNetworkMessage(NetworkMessage message) {
         return Message.builder()
             .data(message)
-            .header(HEADER_MESSAGE_TYPE, String.valueOf(message.type()))
             .build();
     }
 
