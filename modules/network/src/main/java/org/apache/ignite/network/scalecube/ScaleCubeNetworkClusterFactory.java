@@ -32,6 +32,7 @@ import org.apache.ignite.network.NetworkClusterContext;
 import org.apache.ignite.network.NetworkClusterFactory;
 import org.apache.ignite.network.NetworkConfigurationException;
 import org.apache.ignite.network.internal.SerializerProvider;
+import org.apache.ignite.network.internal.netty.ConnectionManager;
 import org.apache.ignite.network.internal.netty.NettyServer;
 
 /**
@@ -40,10 +41,6 @@ import org.apache.ignite.network.internal.netty.NettyServer;
 public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
     /** Unique name of network member. */
     private final String localMemberName;
-
-    /** Local port. */
-    private final int localPort;
-
     /** Network addresses to find another members in cluster. */
     private final List<Address> addresses;
 
@@ -60,12 +57,10 @@ public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
      */
     public ScaleCubeNetworkClusterFactory(
         String localMemberName,
-        int port,
         List<String> addresses,
         ScaleCubeMemberResolver memberResolver
     ) {
         this.localMemberName = localMemberName;
-        this.localPort = port;
         this.addresses = addresses.stream().map(address -> {
             try {
                 return Address.from(address);
@@ -85,17 +80,11 @@ public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
      * @param messageHandlerHolder Holder of all cluster message handlers.
      * @return {@link NetworkCluster} instance.
      */
-    @Override public NetworkCluster startCluster(NetworkClusterContext clusterContext) {
+    @Override public NetworkCluster startCluster(
+        ConnectionManager connectionManager,
+        NetworkClusterContext clusterContext
+    ) {
         MessageHandlerHolder handlerHolder = clusterContext.messageHandlerHolder();
-
-        SerializerProvider provider = new SerializerProvider(clusterContext.messageMapperProviders());
-        var builder = new NettyServer.NettyServerBuilder(localPort, provider);
-        final NettyServer server;
-        try {
-            server = builder.start().get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
 
         Cluster cluster = new ClusterImpl()
             .handler(cl -> {
@@ -106,7 +95,7 @@ public class ScaleCubeNetworkClusterFactory implements NetworkClusterFactory {
                 .transport(trans -> {
                     return trans.transportFactory(new TransportFactory() {
                         @Override public Transport createTransport(TransportConfig config) {
-                            return new ScaleCubeDirectMarshallerTransport(server, provider);
+                            return new ScaleCubeDirectMarshallerTransport(connectionManager);
                         }
                     });
                 })

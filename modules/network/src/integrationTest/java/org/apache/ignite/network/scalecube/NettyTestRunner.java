@@ -17,23 +17,28 @@
 
 package org.apache.ignite.network.scalecube;
 
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.apache.ignite.network.internal.SerializerProvider;
 import org.apache.ignite.network.internal.netty.NettyClient;
+import org.apache.ignite.network.internal.netty.NettySender;
 import org.apache.ignite.network.internal.netty.NettyServer;
 import org.apache.ignite.network.message.MessageMapperProvider;
 import org.apache.ignite.network.message.NetworkMessage;
 
+@Deprecated
+// Only for WIP purposes
 public class NettyTestRunner {
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         int port = 1234;
 
-        Consumer<NetworkMessage> listener = (msg) -> {
+        BiConsumer<InetSocketAddress, NetworkMessage> listener = (addr, msg) -> {
             System.out.println(msg);
         };
 
@@ -45,11 +50,10 @@ public class NettyTestRunner {
 
         final SerializerProvider provider = new SerializerProvider(Arrays.asList(messageMapperProviders));
 
-        final NettyServer.NettyServerBuilder builder = new NettyServer.NettyServerBuilder(port, provider);
-        builder.addListener(listener);
-        final NettyServer server = builder.start().get();
+        final NettyServer server = new NettyServer(port, channel -> {}, listener, provider);
+        server.start().get();
 
-        final NettyClient client = NettyClient.start(port, provider, listener).get();
+        final NettyClient client = new NettyClient("localhost", port, provider, listener);
 
         StringBuilder message = new StringBuilder("");
 
@@ -63,6 +67,8 @@ public class NettyTestRunner {
             someMap.put(i, "" + (char) ('a' + i));
         }
 
-        client.send(new TestMessage(message.toString(), someMap));
+        NettySender sender = client.start().get();
+
+        sender.send(new TestMessage(message.toString(), someMap));
     }
 }

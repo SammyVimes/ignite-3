@@ -19,20 +19,22 @@ package org.apache.ignite.network.internal.netty;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import java.util.function.Consumer;
+import java.net.InetSocketAddress;
+import java.util.function.BiConsumer;
 import org.apache.ignite.network.message.NetworkMessage;
 
 public class RequestHandler extends ChannelInboundHandlerAdapter {
 
-    private final Consumer<NetworkMessage> requestListener;
+    private final BiConsumer<InetSocketAddress, NetworkMessage> requestListener;
 
-    public RequestHandler(Consumer<NetworkMessage> listener) {
+    public RequestHandler(BiConsumer<InetSocketAddress, NetworkMessage> listener) {
         requestListener = listener;
     }
 
     /** {@inheritDoc} */
     @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        InetSocketAddress address = (InetSocketAddress) ctx.channel().remoteAddress();
         NetworkMessage message = (NetworkMessage) msg;
-        requestListener.accept(message);
+        requestListener.accept(address, message);
     }
 }

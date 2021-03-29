@@ -31,113 +31,69 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.stream.ChunkedInput;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-import org.apache.ignite.network.internal.DirectMessageWriter;
+import java.util.function.BiConsumer;
 import org.apache.ignite.network.internal.SerializerProvider;
-import org.apache.ignite.network.message.MessageSerializer;
 import org.apache.ignite.network.message.NetworkMessage;
 
 public class NettyClient {
 
+    private final Bootstrap bootstrap = new Bootstrap();
+
+    private final EventLoopGroup workerGroup = new NioEventLoopGroup();;
+
     private final SerializerProvider serializerProvider;
 
-    private final Consumer<NetworkMessage> messageListener;
+    private final String host;
 
-    private final ChannelFuture f;
+    private final int port;
 
-    public NettyClient(ChannelFuture f, SerializerProvider provider, Consumer<NetworkMessage> listener) {
-        this.f = f;
+    private final BiConsumer<InetSocketAddress, NetworkMessage> messageListener;
+
+    private final CompletableFuture<NettySender> clientFuture = new CompletableFuture<>();
+
+    public NettyClient(String host, int port, SerializerProvider provider, BiConsumer<InetSocketAddress, NetworkMessage> listener) {
+        this.host = host;
+        this.port = port;
         this.serializerProvider = provider;
         this.messageListener = listener;
     }
 
-    public static CompletableFuture<NettyClient> start(int port, SerializerProvider provider, Consumer<NetworkMessage> listener) {
-        String host = "localhost";
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-
-        CompletableFuture<NettyClient> clientFuture = new CompletableFuture<>();
-
-        new Thread(() -> {
-            try {
-                Bootstrap b = new Bootstrap();
-                b.group(workerGroup);
-                b.channel(NioSocketChannel.class);
-                b.option(ChannelOption.SO_KEEPALIVE, true);
-                b.handler(new ChannelInitializer<SocketChannel>() {
-                    /** {@inheritDoc} */
-                    @Override public void initChannel(SocketChannel ch)
-                        throws Exception {
-                        ch.pipeline().addLast(new InboundDecoder(provider),
-                            new RequestHandler(listener),
-                            new ChunkedWriteHandler());
-                    }
-                });
-
-                ChannelFuture f = b.connect(host, port).sync();
-
-                clientFuture.complete(new NettyClient(f, provider, listener));
-
-                f.channel().closeFuture().sync();
+    public CompletableFuture<NettySender> start() {
+        bootstrap.group(workerGroup);
+        bootstrap.channel(NioSocketChannel.class);
+        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+            /** {@inheritDoc} */
+            @Override public void initChannel(SocketChannel ch)
+                throws Exception {
+                ch.pipeline().addLast(new InboundDecoder(serializerProvider),
+                    new RequestHandler(messageListener),
+                    new ChunkedWriteHandler());
             }
-            catch (Exception e) {
-                clientFuture.completeExceptionally(e);
+        });
+
+        ChannelFuture connectFuture = bootstrap.connect(host, port);
+
+        connectFuture.addListener(connect -> {
+            if (connect.isSuccess()) {
+                clientFuture.complete(new NettySender(connectFuture.channel(), serializerProvider));
             }
-            finally {
-                workerGroup.shutdownGracefully();
+            else {
+                Throwable cause = connect.cause();
+                clientFuture.completeExceptionally(cause);
             }
-        }).start();
+            connectFuture.channel().closeFuture().addListener(close -> {
+               workerGroup.shutdownGracefully();
+            });
+        });
 
         return clientFuture;
     }
 
-    public void send(NetworkMessage msg) {
-        final DirectMessageWriter writer = new DirectMessageWriter((byte) 1);
-        final MessageSerializer<NetworkMessage> serializer = serializerProvider.createSerializer(msg.type());
-        final ChunkedInput<ByteBuf> input = new ChunkedInput<>() {
-
-            boolean finished = false;
-
-            @Override
-            public boolean isEndOfInput() throws Exception {
-                return finished;
-            }
-
-            @Override
-            public void close() throws Exception {
-
-            }
-
-            @Override
-            @Deprecated
-            public ByteBuf readChunk(ChannelHandlerContext ctx) throws Exception {
-                return readChunk(ctx.alloc());
-            }
-
-            @Override
-            public ByteBuf readChunk(ByteBufAllocator allocator) throws Exception {
-                ByteBuf buffer = allocator.buffer(4096);
-                final ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4096);
-                writer.setBuffer(byteBuffer);
-                finished = serializer.writeMessage(msg, writer);
-                byteBuffer.limit(byteBuffer.position());
-                byteBuffer.rewind();
-                buffer.writeBytes(byteBuffer);
-                return buffer;
-            }
-
-            @Override
-            public long length() {
-                return -1;
-            }
-
-            @Override
-            public long progress() {
-                return 0;
-            }
-        };
-        f.channel().writeAndFlush(input);
+    public CompletableFuture<NettySender> sender() {
+        return clientFuture;
     }
 }

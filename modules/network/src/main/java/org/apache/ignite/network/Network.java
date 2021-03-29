@@ -20,6 +20,8 @@ package org.apache.ignite.network;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.ignite.network.internal.SerializerProvider;
+import org.apache.ignite.network.internal.netty.ConnectionManager;
 import org.apache.ignite.network.message.MessageMapperProvider;
 import org.apache.ignite.network.message.NetworkMessage;
 
@@ -35,6 +37,8 @@ public class Network {
 
     /** Cluster factory. */
     private final NetworkClusterFactory clusterFactory;
+
+    private ConnectionManager connectionManager;
 
     /**
      * Constructor.
@@ -60,9 +64,14 @@ public class Network {
      * Start new cluster.
      * @return Network cluster.
      */
-    public NetworkCluster start() {
+    public NetworkCluster start(int localPort) {
         final List<MessageMapperProvider<NetworkMessage>> list = Arrays.asList(messageMapperProviders);
         NetworkClusterContext context = new NetworkClusterContext(messageHandlerHolder, Collections.unmodifiableList(list));
-        return clusterFactory.startCluster(context);
+
+        connectionManager = new ConnectionManager(localPort, new SerializerProvider(context.messageMapperProviders()));
+
+        connectionManager.start();
+
+        return clusterFactory.startCluster(connectionManager, context);
     }
 }

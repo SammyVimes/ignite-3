@@ -34,8 +34,6 @@ public class ScaleCubeMessageMapperProvider implements MessageMapperProvider<Sca
 
             byte[] array;
 
-            String className;
-
             Map<String, String> headers;
 
             /** {@inheritDoc} */
@@ -53,14 +51,6 @@ public class ScaleCubeMessageMapperProvider implements MessageMapperProvider<Sca
                         reader.incrementState();
 
                     case 1:
-                        className = reader.readString("className");
-
-                        if (!reader.isLastRead())
-                            return false;
-
-                        reader.incrementState();
-
-                    case 2:
                         headers = reader.readMap("headers", MessageCollectionItemType.STRING, MessageCollectionItemType.STRING, false);
 
                         if (!reader.isLastRead())
@@ -70,7 +60,7 @@ public class ScaleCubeMessageMapperProvider implements MessageMapperProvider<Sca
 
                 }
 
-                obj = new ScaleCubeMessage(array, className, headers);
+                obj = new ScaleCubeMessage(array, headers);
 
                 return reader.afterMessageRead(ScaleCubeMessage.class);
             }
@@ -105,12 +95,6 @@ public class ScaleCubeMessageMapperProvider implements MessageMapperProvider<Sca
                     writer.incrementState();
 
                 case 1:
-                    if (!writer.writeString("className", message.getClassName()))
-                        return false;
-
-                    writer.incrementState();
-
-                case 2:
                     if (!writer.writeMap("headers", message.getHeaders(), MessageCollectionItemType.STRING, MessageCollectionItemType.STRING))
                         return false;
 

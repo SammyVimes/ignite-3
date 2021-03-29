@@ -25,22 +25,15 @@ public class ScaleCubeMessage extends NetworkMessage {
 
     private final byte[] array;
 
-    private final String className;
-
     private final Map<String, String> headers;
 
-    public ScaleCubeMessage(byte[] array, String className, Map<String, String> headers) {
+    public ScaleCubeMessage(byte[] array, Map<String, String> headers) {
         this.array = array;
-        this.className = className;
         this.headers = headers;
     }
 
     public byte[] getArray() {
         return array;
-    }
-
-    public String getClassName() {
-        return className;
     }
 
     public Map<String, String> getHeaders() {

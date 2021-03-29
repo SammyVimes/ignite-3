@@ -16,6 +16,8 @@
  */
 package org.apache.ignite.network;
 
+import org.apache.ignite.network.internal.netty.ConnectionManager;
+
 /**
  * Factory for creating {@link NetworkCluster}.
  */
@@ -25,5 +27,5 @@ public interface NetworkClusterFactory {
      * @param clusterContext
      * @return
      */
-    NetworkCluster startCluster(NetworkClusterContext clusterContext);
+    NetworkCluster startCluster(ConnectionManager connectionManager, NetworkClusterContext clusterContext);
 }

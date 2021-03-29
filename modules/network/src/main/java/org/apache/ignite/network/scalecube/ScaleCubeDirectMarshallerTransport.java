@@ -26,13 +26,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.ignite.network.internal.SerializerProvider;
-import org.apache.ignite.network.internal.netty.NettyClient;
-import org.apache.ignite.network.internal.netty.NettyServer;
+import org.apache.ignite.network.internal.netty.ConnectionManager;
 import org.apache.ignite.network.message.NetworkMessage;
 import org.apache.ignite.network.scalecube.message.ScaleCubeMessage;
 import org.slf4j.Logger;
@@ -50,8 +47,6 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Transport.class);
 
-    private final SerializerProvider provider;
-
     // Subject
     private final DirectProcessor<Message> subject = DirectProcessor.create();
     private final FluxSink<Message> sink = subject.sink();
@@ -59,16 +54,13 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
     private final MonoProcessor<Void> stop = MonoProcessor.create();
     private final MonoProcessor<Void> onStop = MonoProcessor.create();
     private final LoopResources loopResources = LoopResources.create("sc-cluster-io", 1, true);
-    private NettyServer server;
-    private Address address;
+    private final ConnectionManager connectionManager;
+    private final Address address;
 
-    private final Map<Address, Mono<? extends NettyClient>> connections = new ConcurrentHashMap<>();
-
-    public ScaleCubeDirectMarshallerTransport(NettyServer server, SerializerProvider provider) {
-        this.server = server;
-        this.provider = provider;
-        this.server.addListener(this::onMessage);
-        this.address = prepareAddress(server);
+    public ScaleCubeDirectMarshallerTransport(ConnectionManager connectionManager) {
+        this.connectionManager = connectionManager;
+        this.connectionManager.addListener(this::onMessage);
+        this.address = prepareAddress(connectionManager.getLocalAddress());
         // Setup cleanup
         stop.then(doStop())
             .doFinally(s -> onStop.onComplete())
@@ -76,9 +68,9 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
                 null, ex -> LOGGER.warn("[{}][doStop] Exception occurred: {}", address, ex.toString()));
     }
 
-    private static Address prepareAddress(NettyServer server) {
-        InetAddress address = server.address().getAddress();
-        int port = server.address().getPort();
+    private static Address prepareAddress(InetSocketAddress addr) {
+        InetAddress address = addr.getAddress();
+        int port = addr.getPort();
         if (address.isAnyLocalAddress()) {
             return Address.create(Address.getLocalIpAddress().getHostAddress(), port);
         } else {
@@ -94,7 +86,6 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
                 sink.complete();
                 return Flux.concatDelayError(shutdownLoopResources())
                     .then()
-                    .doFinally(s -> connections.clear())
                     .doOnSuccess(avoid -> LOGGER.info("[{}][doStop] Stopped", address));
             });
     }
@@ -126,14 +117,14 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
 
     @Override public Mono<Void> send(Address address, Message message) {
         return Mono.defer(() -> {
-            return connections.computeIfAbsent(address, this::connect0);
+            return Mono.fromFuture(connectionManager.channel(InetSocketAddress.createUnresolved(address.host(), address.port())));
         }).flatMap(client -> {
             client.send(fromMessage(message));
             return Mono.empty().then();
         });
     }
 
-    private void onMessage(NetworkMessage msg) {
+    private void onMessage(InetSocketAddress source, NetworkMessage msg) {
         Message t = fromNetworkMessage(msg);
         if (t != null) {
             sink.next(t);
@@ -142,17 +133,17 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
 
     NetworkMessage fromMessage(Message message) {
         Object dataObj = message.data();
-        String className = dataObj.getClass().getCanonicalName();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         ObjectOutputStream o;
         try {
             o = new ObjectOutputStream(stream);
             o.writeObject(dataObj);
         }
-        catch (IOException ignored) {
-            ignored.printStackTrace();
+        catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return new ScaleCubeMessage(stream.toByteArray(), className, message.headers());
+        return new ScaleCubeMessage(stream.toByteArray(), message.headers());
     }
 
     @Override public Mono<Message> requestResponse(Address address, final Message request) {
@@ -197,26 +188,6 @@ public class ScaleCubeDirectMarshallerTransport implements Transport {
             return Message.withHeaders(headers).data(obj).build();
         }
         return null;
-    }
-
-
-    private Mono<? extends NettyClient> connect0(Address address1) {
-        final CompletableFuture<NettyClient> start = NettyClient.start(address1.port(), provider, this::onMessage);
-
-        return Mono.fromFuture(start)
-            .doOnSuccess(
-                connection -> {
-//                    connection.onDispose().doOnTerminate(() -> connections.remove(address1)).subscribe();
-//                    LOGGER.debug(
-//                        "[{}][connected][{}] Channel: {}", address, address1, connection.channel());
-                })
-            .doOnError(
-                th -> {
-                    LOGGER.warn(
-                        "[{}][connect0][{}] Exception occurred: {}", address, address1, th.toString());
-                    connections.remove(address1);
-                })
-            .cache();
     }
 
     @Override public final Flux<Message> listen() {

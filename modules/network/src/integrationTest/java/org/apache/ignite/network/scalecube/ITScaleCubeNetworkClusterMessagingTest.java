@@ -117,7 +117,7 @@ class ITScaleCubeNetworkClusterMessagingTest {
      */
     private NetworkCluster startMember(String name, int port, List<String> addresses) {
         Network network = new Network(
-            new ScaleCubeNetworkClusterFactory(name, port, addresses, new ScaleCubeMemberResolver())
+            new ScaleCubeNetworkClusterFactory(name, addresses, new ScaleCubeMemberResolver())
         );
 
         network.registerMessageMapper(TestMessage.TYPE, new TestMessageMapperProvider());
@@ -125,7 +125,7 @@ class ITScaleCubeNetworkClusterMessagingTest {
         network.registerMessageMapper(TestResponse.TYPE, new TestResponseMapperProvider());
         network.registerMessageMapper(ScaleCubeMessage.TYPE, new ScaleCubeMessageMapperProvider());
 
-        NetworkCluster member = network.start();
+        NetworkCluster member = network.start(port);
 
         member.addHandlersProvider(new TestNetworkHandlersProvider(name));
 
