@@ -88,18 +88,27 @@
                     <execution>
                         <id>default-compile</id>
                         <configuration>
-                            <compilerArgument>-proc:none</compilerArgument>
-                            <includes>
-                                <include>org/apache/ignite/configuration/processor/internal/*</include>
-                            </includes>
+                            <proc>none</proc>
                         </configuration>
                     </execution>
                     <execution>
-                        <id>compile-project</id>
-                        <phase>compile</phase>
+                        <id>default-testCompile</id>
+                        <phase>test-compile</phase>
                         <goals>
-                            <goal>compile</goal>
+                            <goal>testCompile</goal>
                         </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.apache.ignite</groupId>
+                                    <artifactId>ignite-configuration-annotation-processor</artifactId>
+                                    <version>${project.version}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                            <annotationProcessors>
+                                <annotationProcessor>org.apache.ignite.internal.processor.configuration.Processor</annotationProcessor>
+                            </annotationProcessors>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
